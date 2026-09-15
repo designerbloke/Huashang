@@ -55,12 +55,51 @@ reporting view.
   explicit statement that they are estimates rather than measurements.
 - Light and dark themes are both designed, with a toggle.
 
+## Deploying to Vercel
+
+The prototype is static, so there is no server, no environment variable and no
+database to configure.
+
+One thing to know first. `prototype/index.html` deliberately contains only page
+content, because the Artifact platform supplies its own document wrapper. Any other
+host needs a real HTML document, so `scripts/build-static.mjs` wraps it and copies
+the assets into `public/`. That is what `vercel.json` runs.
+
+1. Push the branch, or merge it into your default branch.
+2. At vercel.com, choose Add New, then Project, then import designerbloke/Huashang.
+3. Leave the framework preset as Other. Vercel reads `vercel.json` and runs
+   `node scripts/build-static.mjs`, serving `public/`. Nothing else to fill in.
+4. Deploy.
+
+If you import a feature branch, Vercel gives it a preview URL and treats your default
+branch as production. Either merge first, or set Project Settings, then Git, then
+Production Branch to the branch you want live.
+
+From the command line instead:
+
+    npm i -g vercel
+    vercel          # preview deployment
+    vercel --prod   # production deployment
+
+To deploy without connecting a repository, run `node scripts/build-static.mjs` and
+drag the `public` folder onto vercel.com/new.
+
+## A note on access from mainland China
+
+Vercel is not reliably reachable from inside mainland China without a VPN. It is fine
+for your own review and for presenting over your own connection, but do not assume the
+manager can open the link from her desk. For anything she needs to reach directly, host
+in region, which brings ICP filing, data residency and their IT team into the
+conversation. That is a phase two decision, not a prototype one.
+
 ## Files
 
 - `prototype/index.html` - page shell
 - `prototype/styles.css` - design tokens and layout
 - `prototype/data.js` - all sample records, day offsets relative to today
 - `prototype/app.js` - views, interactions, charts and the assistant
+- `scripts/build-static.mjs` - wraps the prototype into `public/` for static hosting
+- `vercel.json` - build command and output directory for Vercel
 
 ## Not in this version
 
