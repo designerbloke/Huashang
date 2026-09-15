@@ -18,12 +18,19 @@ const PEOPLE = {
 };
 
 const CAMPUSES = [
-  { id: "gz-main",   s: "GZ",  n: { en: "Guangzhou Main Campus",    zh: "广州主校区" },   k: { en: "University",         zh: "大学" } },
-  { id: "gz-intl",   s: "GIS", n: { en: "Guangzhou International School", zh: "广州国际学校" }, k: { en: "International school", zh: "国际学校" } },
-  { id: "fs-poly",   s: "FS",  n: { en: "Foshan Polytechnic Campus", zh: "佛山职院校区" }, k: { en: "Polytechnic",        zh: "职业技术学院" } },
-  { id: "zh-uni",    s: "ZH",  n: { en: "Zhuhai University Campus",  zh: "珠海大学校区" }, k: { en: "University",         zh: "大学" } },
-  { id: "qy-poly",   s: "QY",  n: { en: "Qingyuan Polytechnic Campus", zh: "清远职院校区" }, k: { en: "Polytechnic",      zh: "职业技术学院" } },
-  { id: "sz-centre", s: "SZ",  n: { en: "Shenzhen Learning Centre",  zh: "深圳学习中心" }, k: { en: "Learning centre",    zh: "学习中心" } }
+  { id: "gz-main", kind: "university",   s: "GZ",  n: { en: "Guangzhou Main Campus",    zh: "广州主校区" },   k: { en: "University",         zh: "大学" } },
+  { id: "gz-intl", kind: "school",   s: "GIS", n: { en: "Guangzhou International School", zh: "广州国际学校" }, k: { en: "International school", zh: "国际学校" } },
+  { id: "fs-poly", kind: "polytechnic",   s: "FS",  n: { en: "Foshan Polytechnic Campus", zh: "佛山职院校区" }, k: { en: "Polytechnic",        zh: "职业技术学院" } },
+  { id: "zh-uni", kind: "university",    s: "ZH",  n: { en: "Zhuhai University Campus",  zh: "珠海大学校区" }, k: { en: "University",         zh: "大学" } },
+  { id: "qy-poly", kind: "polytechnic",   s: "QY",  n: { en: "Qingyuan Polytechnic Campus", zh: "清远职院校区" }, k: { en: "Polytechnic",      zh: "职业技术学院" } },
+  { id: "sz-centre", kind: "centre", s: "SZ",  n: { en: "Shenzhen Learning Centre",  zh: "深圳学习中心" }, k: { en: "Learning centre",    zh: "学习中心" } }
+];
+
+const ENTITY_GROUPS = [
+  { key: "school",      n: { en: "International school", zh: "国际学校" } },
+  { key: "university",  n: { en: "Universities",         zh: "大学校区" } },
+  { key: "polytechnic", n: { en: "Polytechnics",         zh: "职业技术学院" } },
+  { key: "centre",      n: { en: "Learning centres",     zh: "学习中心" } }
 ];
 
 const DEPTS = {

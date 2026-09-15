@@ -8,6 +8,7 @@ const state = {
   view: "today",
   campus: "all",
   inboxSrc: "all",
+  calMode: "month",
   tasks: TASKS.map(x => ({ ...x })),
   inbox: INBOX.map(x => ({ ...x, done: false })),
   seq: 2065
@@ -88,6 +89,13 @@ const UI = {
   openWork:      { en: "Open", zh: "进行中" },
   inApproval:    { en: "In approval", zh: "审批中" },
 
+  compareTitle:  { en: "Side by side", zh: "横向对比" },
+  compareSub:    { en: "The same measures for every entity, so campuses can be compared rather than described.", zh: "各机构采用同一组指标，便于横向比较而非各说各话。" },
+  closedK:       { en: "Closed", zh: "已完成" },
+  avgDays:       { en: "Avg days", zh: "平均天数" },
+  monthView:     { en: "Month", zh: "月" },
+  weekView:      { en: "Week", zh: "周" },
+  missed:        { en: "Missed or overdue", zh: "已逾期" },
   calTitle:      { en: "Deadlines and diary", zh: "截止日期与日程" },
   calSub:        { en: "Task deadlines and diary entries on one grid, so nothing is agreed twice.", zh: "任务截止日期与日程集中呈现，避免重复安排。" },
   upcoming:      { en: "Next ten days", zh: "未来十天" },
@@ -620,15 +628,44 @@ function campusStats(id) {
     overdue: open.filter(t => t.due != null && t.due < 0).length,
     appr: open.filter(t => t.st === "awaiting_approval").length,
     wait: open.filter(t => t.waitDays > 0).length,
-    done: all.filter(t => !OPEN(t)).length
+    done: all.filter(t => !OPEN(t)).length,
+    avg: (() => {
+      const cl = all.filter(t => !OPEN(t) && t.turnaround);
+      return cl.length ? cl.reduce((a, t) => a + t.turnaround, 0) / cl.length : null;
+    })()
   };
 }
 
+function campusCard(c) {
+  const s = campusStats(c.id);
+  const tot = Math.max(1, s.open);
+  return `<button class="campus-card" data-campus="${c.id}" type="button">
+    <div class="campus-top">
+      <span><span class="campus-name">${esc(L(c.n))}</span><br><span class="campus-kind">${esc(L(c.k))}</span></span>
+      <span class="tag">${esc(c.s)}</span>
+    </div>
+    <div class="campus-nums">
+      <span class="campus-num"><span class="n">${s.open}</span><span class="k">${T("openWork")}</span></span>
+      <span class="campus-num"><span class="n${s.overdue ? " is-alert" : ""}">${s.overdue}</span><span class="k">${T("k_overdue")}</span></span>
+      <span class="campus-num"><span class="n">${s.appr}</span><span class="k">${T("inApproval")}</span></span>
+    </div>
+    <div class="mini-bar">
+      <span class="mini-seg" style="width:${(s.appr / tot) * 100}%;background:var(--accent-fill)" title="${T("inApproval")}"></span>
+      <span class="mini-seg" style="width:${(s.wait / tot) * 100}%;background:var(--warning-fill)" title="${T("k_waiting")}"></span>
+      <span class="mini-seg" style="width:${(s.overdue / tot) * 100}%;background:var(--critical)" title="${T("k_overdue")}"></span>
+    </div>
+  </button>`;
+}
+
 function viewCampuses() {
-  const rows = CAMPUSES.map(c => {
-    const s = campusStats(c.id);
-    return { c, s };
-  });
+  const groups = ENTITY_GROUPS.map(g => ({ g, list: CAMPUSES.filter(c => c.kind === g.key) })).filter(x => x.list.length);
+  const groupWide = state.tasks.filter(t => t.campus === "all");
+  const rows = CAMPUSES.map(c => ({ c, s: campusStats(c.id) }));
+  const totals = rows.reduce((a, r) => ({
+    open: a.open + r.s.open, overdue: a.overdue + r.s.overdue, appr: a.appr + r.s.appr,
+    wait: a.wait + r.s.wait, done: a.done + r.s.done
+  }), { open: 0, overdue: 0, appr: 0, wait: 0, done: 0 });
+
   return `<div class="view-inner">
     <div class="page-head">
       <div>
@@ -636,35 +673,75 @@ function viewCampuses() {
         <h1 class="page-title">${T("campusTitle")}</h1>
         <p class="page-sub">${T("campusSub")}</p>
       </div>
+      ${legend([{ c: "var(--accent-fill)", t: T("inApproval") }, { c: "var(--warning-fill)", t: T("k_waiting") }, { c: "var(--critical)", t: T("k_overdue") }])}
     </div>
-    <div class="grid-cards">
-      ${rows.map(({ c, s }) => {
-        const tot = Math.max(1, s.open);
-        return `<button class="campus-card" data-campus="${c.id}" type="button">
-          <div class="campus-top">
-            <span><span class="campus-name">${esc(L(c.n))}</span><br><span class="campus-kind">${esc(L(c.k))}</span></span>
-            <span class="tag">${esc(c.s)}</span>
-          </div>
-          <div class="campus-nums">
-            <span class="campus-num"><span class="n">${s.open}</span><span class="k">${T("openWork")}</span></span>
-            <span class="campus-num"><span class="n${s.overdue ? " is-alert" : ""}">${s.overdue}</span><span class="k">${T("k_overdue")}</span></span>
-            <span class="campus-num"><span class="n">${s.appr}</span><span class="k">${T("inApproval")}</span></span>
-          </div>
-          <div class="mini-bar">
-            <span class="mini-seg" style="width:${(s.appr / tot) * 100}%;background:var(--accent-fill)"></span>
-            <span class="mini-seg" style="width:${(s.wait / tot) * 100}%;background:var(--warning-fill)"></span>
-            <span class="mini-seg" style="width:${(s.overdue / tot) * 100}%;background:var(--critical)"></span>
-          </div>
-        </button>`;
-      }).join("")}
-    </div>
+
+    ${groups.map(({ g, list }) => `<section class="section">
+      <div class="section-head">
+        <h2 class="section-title">${esc(L(g.n))}</h2>
+        <span class="section-note">${list.length} ${state.lang === "zh" ? "个机构" : list.length === 1 ? "entity" : "entities"}</span>
+      </div>
+      <div class="grid-cards is-entities">${list.map(campusCard).join("")}</div>
+    </section>`).join("")}
+
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">${T("compareTitle")}</h2>
+        <span class="section-note">${T("compareSub")}</span>
+      </div>
+      <div class="panel table-wrap">
+        <table class="data">
+          <thead><tr>
+            <th>${T("campus")}</th><th>${T("type")}</th>
+            <th style="text-align:right">${T("openWork")}</th>
+            <th style="text-align:right">${T("k_overdue")}</th>
+            <th style="text-align:right">${T("inApproval")}</th>
+            <th style="text-align:right">${T("k_waiting")}</th>
+            <th style="text-align:right">${T("closedK")}</th>
+            <th style="text-align:right">${T("avgDays")}</th>
+          </tr></thead>
+          <tbody>
+            ${rows.map(({ c, s }) => `<tr>
+              <td><button class="quiet-btn" data-campus="${c.id}" data-jump="1" type="button">${esc(L(c.n))}</button></td>
+              <td style="color:var(--ink-3)">${esc(L(c.k))}</td>
+              <td class="num">${s.open}</td>
+              <td class="num"${s.overdue ? ' style="color:var(--critical)"' : ""}>${s.overdue}</td>
+              <td class="num">${s.appr}</td>
+              <td class="num">${s.wait}</td>
+              <td class="num">${s.done}</td>
+              <td class="num">${s.avg == null ? "-" : s.avg.toFixed(1)}</td>
+            </tr>`).join("")}
+            <tr>
+              <td style="color:var(--ink-3)">${T("group")}</td>
+              <td style="color:var(--ink-3)">${state.lang === "zh" ? "跨校区" : "Across entities"}</td>
+              <td class="num">${groupWide.filter(OPEN).length}</td>
+              <td class="num">${groupWide.filter(t => OPEN(t) && t.due != null && t.due < 0).length}</td>
+              <td class="num">${groupWide.filter(t => t.st === "awaiting_approval").length}</td>
+              <td class="num">${groupWide.filter(t => OPEN(t) && t.waitDays > 0).length}</td>
+              <td class="num">${groupWide.filter(t => !OPEN(t)).length}</td>
+              <td class="num">-</td>
+            </tr>
+            <tr style="background:var(--surface-2)">
+              <td><b style="font-weight:600">${T("allCampuses")}</b></td><td></td>
+              <td class="num"><b style="font-weight:600">${totals.open}</b></td>
+              <td class="num"><b style="font-weight:600">${totals.overdue}</b></td>
+              <td class="num"><b style="font-weight:600">${totals.appr}</b></td>
+              <td class="num"><b style="font-weight:600">${totals.wait}</b></td>
+              <td class="num"><b style="font-weight:600">${totals.done}</b></td>
+              <td class="num"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
     <section class="section">
       <div class="section-head"><h2 class="section-title">${T("chWorkload")}</h2><span class="section-note">${T("chWorkloadSub")}</span></div>
       <div class="chart-card">
         <div class="chart chart-wrap">${hbars(CAMPUSES.map(c => {
           const s = campusStats(c.id);
           return { k: L(c.n), segs: [{ v: s.open - s.overdue, cls: "bar-fill", label: T("openWork") }, { v: s.overdue, cls: "seg-late", label: T("k_overdue") }], vlabel: String(s.open) };
-        }), { unit: "" })}</div>
+        }))}</div>
         ${legend([{ c: "var(--info)", t: T("openWork") }, { c: "var(--critical)", t: T("k_overdue") }])}
       </div>
     </section>
@@ -672,29 +749,53 @@ function viewCampuses() {
 }
 
 function viewCalendar() {
-  const start = new Date(today0); start.setDate(1);
-  const firstDow = (start.getDay() + 6) % 7;
-  const daysInMonth = new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate();
-  const dows = state.lang === "zh" ? ["一", "二", "三", "四", "五", "六", "日"] : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const week = state.calMode === "week";
   const evAll = EVENTS.filter(e => state.campus === "all" || e.campus === state.campus || e.campus === "all")
-    .concat(tasks().filter(t => OPEN(t) && t.due != null).map(t => ({ on: t.due, time: "", k: "deadline", t: t.t, campus: t.campus, task: t.id, isTask: true })));
+    .concat(tasks().filter(t => OPEN(t) && t.due != null).map(t => ({
+      on: t.due, time: "", t: t.t, campus: t.campus, task: t.id,
+      k: t.due < 0 ? "deadline" : t.st === "awaiting_approval" ? "approval" : "task"
+    })));
+  const key = d => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
   const byDay = {};
-  evAll.forEach(e => { const d = dateOf(e.on); if (d.getMonth() === today0.getMonth()) { const k = d.getDate(); (byDay[k] = byDay[k] || []).push(e); } });
+  evAll.forEach(e => { const k = key(dateOf(e.on)); (byDay[k] = byDay[k] || []).push(e); });
 
-  let cells = "";
-  for (let i = 0; i < firstDow; i++) cells += `<div class="cal-day is-out"></div>`;
-  for (let d = 1; d <= daysInMonth; d++) {
-    const isToday = d === today0.getDate();
-    const evs = (byDay[d] || []).slice(0, 3);
-    cells += `<div class="cal-day${isToday ? " is-today" : ""}">
-      <span class="cal-date">${d}</span>
-      ${evs.map(e => `<button class="cal-ev k-${e.k}" type="button" ${e.task ? `data-task="${e.task}"` : ""}>${esc(L(e.t))}</button>`).join("")}
-      ${(byDay[d] || []).length > 3 ? `<span class="cal-date">+${(byDay[d] || []).length - 3}</span>` : ""}
-      <span class="cal-dot-row">${(byDay[d] || []).map(e => `<span class="cal-dot k-${e.k}"></span>`).join("")}</span>
-    </div>`;
+  const dows = state.lang === "zh" ? ["一", "二", "三", "四", "五", "六", "日"] : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const cells = [];
+  if (week) {
+    const startOff = -((today0.getDay() + 6) % 7);
+    for (let i = 0; i < 7; i++) cells.push({ off: startOff + i });
+  } else {
+    const first = new Date(today0); first.setDate(1);
+    const pad = (first.getDay() + 6) % 7;
+    const days = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+    for (let i = 0; i < pad; i++) cells.push(null);
+    for (let d = 1; d <= days; d++) cells.push({ off: Math.round((new Date(first.getFullYear(), first.getMonth(), d) - today0) / DAYMS) });
   }
 
+  const cellHtml = c => {
+    if (!c) return `<div class="cal-day is-out"></div>`;
+    const d = dateOf(c.off);
+    const evs = byDay[key(d)] || [];
+    const shown = week ? evs : evs.slice(0, 3);
+    return `<div class="cal-day${c.off === 0 ? " is-today" : ""}${week ? " is-tall" : ""}">
+      <span class="cal-date">${week ? esc(fmtDate(c.off)) : d.getDate()}</span>
+      ${shown.map(e => `<button class="cal-ev k-${e.k}" type="button" ${e.task ? `data-task="${e.task}"` : ""}>${e.time ? `<b>${esc(e.time)}</b> ` : ""}${esc(L(e.t))}</button>`).join("")}
+      ${!week && evs.length > 3 ? `<span class="cal-date">+${evs.length - 3}</span>` : ""}
+      <span class="cal-dot-row">${evs.map(e => `<span class="cal-dot k-${e.k}"></span>`).join("")}</span>
+    </div>`;
+  };
+
+  const overdue = evAll.filter(e => e.on < 0).sort((a, b) => a.on - b.on);
   const agenda = evAll.filter(e => e.on >= 0 && e.on <= 10).sort((a, b) => a.on - b.on || (a.time > b.time ? 1 : -1));
+  const agendaRow = e => `<div class="agenda-item">
+      <span class="agenda-when${e.on < 0 ? " is-late" : ""}">${esc(fmtDate(e.on))}<br>${esc(e.time || dueLabel(e.on))}</span>
+      <span class="agenda-text">
+        <span class="agenda-title">${esc(L(e.t))}</span>
+        <span class="row-meta"><span>${esc(e.campus === "all" ? T("group") : campusName(e.campus))}</span>
+        ${e.task ? `<button class="quiet-btn" data-task="${e.task}" type="button">${esc(e.task)}</button>` : ""}</span>
+      </span>
+    </div>`;
+
   return `<div class="view-inner">
     <div class="page-head">
       <div>
@@ -702,25 +803,24 @@ function viewCalendar() {
         <h1 class="page-title">${T("calTitle")}</h1>
         <p class="page-sub">${T("calSub")}</p>
       </div>
-      ${legend([{ c: "var(--critical)", t: T("due") }, { c: "var(--accent-fill)", t: T("nav_approvals") }, { c: "var(--info)", t: state.lang === "zh" ? "活动" : "Events" }])}
+      <div class="toolbar">
+        <div class="seg" role="group">
+          <button type="button" class="seg-btn${week ? "" : " is-on"}" data-cal="month">${T("monthView")}</button>
+          <button type="button" class="seg-btn${week ? " is-on" : ""}" data-cal="week">${T("weekView")}</button>
+        </div>
+        ${legend([{ c: "var(--critical)", t: T("due") }, { c: "var(--accent-fill)", t: T("nav_approvals") }, { c: "var(--info)", t: state.lang === "zh" ? "活动" : "Events" }])}
+      </div>
     </div>
     <div class="cal">
       <div class="cal-grid">
         ${dows.map(d => `<div class="cal-dow">${d}</div>`).join("")}
-        ${cells}
+        ${cells.map(cellHtml).join("")}
       </div>
       <div class="panel">
+        ${overdue.length ? `<div class="panel-pad" style="padding-bottom:6px"><span class="eyebrow" style="color:var(--critical)">${T("missed")}</span></div>
+          <div class="agenda">${overdue.map(agendaRow).join("")}</div>` : ""}
         <div class="panel-pad" style="padding-bottom:6px"><span class="eyebrow">${T("upcoming")}</span></div>
-        <div class="agenda">
-          ${agenda.map(e => `<div class="agenda-item">
-            <span class="agenda-when">${esc(fmtDate(e.on))}<br>${esc(e.time || dueLabel(e.on))}</span>
-            <span class="agenda-text">
-              <span class="agenda-title">${esc(L(e.t))}</span>
-              <span class="row-meta"><span>${esc(e.campus === "all" ? T("group") : campusName(e.campus))}</span>
-              ${e.task ? `<button class="quiet-btn" data-task="${e.task}" type="button">${esc(e.task)}</button>` : ""}</span>
-            </span>
-          </div>`).join("")}
-        </div>
+        <div class="agenda">${agenda.length ? agenda.map(agendaRow).join("") : `<p class="empty">${T("emptyList")}</p>`}</div>
       </div>
     </div>
   </div>`;
@@ -1062,12 +1162,14 @@ function render() {
 
 /* ---------------- events ---------------- */
 document.addEventListener("click", e => {
-  const el = e.target.closest("[data-view],[data-task],[data-src],[data-campus],[data-approve],[data-remind],[data-complete],[data-escalate],[data-return],[data-make],[data-link],[data-file],[data-route],[data-close],[data-ask],[data-lang]");
+  const el = e.target.closest("[data-view],[data-task],[data-src],[data-cal],[data-jump],[data-campus],[data-approve],[data-remind],[data-complete],[data-escalate],[data-return],[data-make],[data-link],[data-file],[data-route],[data-close],[data-ask],[data-lang]");
   if (!el) return;
 
   if (el.dataset.view) { state.view = el.dataset.view; document.getElementById("rail").classList.remove("is-open"); render(); return; }
   if (el.dataset.lang) { state.lang = el.dataset.lang; render(); if (!document.getElementById("drawer").hidden) closeDrawer(); return; }
   if (el.dataset.src) { state.inboxSrc = el.dataset.src; render(); return; }
+  if (el.dataset.cal) { state.calMode = el.dataset.cal; render(); return; }
+  if (el.dataset.jump) { state.campus = el.dataset.campus; state.view = "today"; render(); return; }
   if (el.dataset.campus && el.classList.contains("campus-card")) { state.campus = el.dataset.campus; state.view = "today"; render(); return; }
   if (el.dataset.close) { closeDrawer(); return; }
   if (el.dataset.ask) { document.getElementById("assistantInput").value = ""; ask(el.dataset.ask); return; }

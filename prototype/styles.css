@@ -603,3 +603,10 @@ table.data tr:last-child td { border-bottom: 0; }
 .cal-dot.k-deadline { background: var(--critical); }
 .cal-dot.k-approval { background: var(--accent-fill); }
 .cal-dot.k-event { background: var(--info); }
+
+/* week view and missed entries */
+.cal-day.is-tall { min-height: 190px; }
+.cal-day.is-tall .cal-ev { white-space: normal; }
+.agenda-when.is-late { color: var(--critical); }
+.grid-cards.is-entities { grid-template-columns: repeat(auto-fill, minmax(268px, 340px)); }
+.cal-ev.k-task { background: var(--info-soft); color: var(--info); border-left-color: var(--info); }

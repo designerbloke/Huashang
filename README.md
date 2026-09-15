@@ -33,8 +33,9 @@ reporting view.
 - Unified inbox - all five sources in one queue, each item read once and converted
 - Approvals - route stages, ageing against each stage, approve or nudge
 - Follow-ups - who owes her what, for how long, and when they were last chased
-- Campuses - the same picture per campus or entity, with a workload comparison
-- Calendar - task deadlines and diary entries on one grid
+- Campuses and entities - grouped by entity type, with a side by side comparison
+  table and a workload chart
+- Calendar and deadlines - month or week grid, with a missed and overdue panel
 - Reports - workload, weekly completion, turnaround against a service target,
   approval ageing, and the estimated time recovery table with its caveat
 - Assistant - answers computed from the records on screen, including drafted
